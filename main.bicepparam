@@ -26,6 +26,9 @@ param connectedRegistryServiceClusterIp = readEnvironmentVariable('CONNECTED_REG
 param acrName = readEnvironmentVariable('ACR_NAME', 'arck8sdemoacr')
 param keyVaultName = readEnvironmentVariable('KEY_VAULT_NAME', 'arck8sdemokv')
 
+// ─── RBAC ───────────────────────────────────────────────────────────────────
+param arcRbacAssigneeId = readEnvironmentVariable('ARC_RBAC_ASSIGNEE_ID', '')
+
 // ─── Monitoring ─────────────────────────────────────────────────────────────
 param azureMonitorWorkspaceName = readEnvironmentVariable('AZURE_MONITOR_WORKSPACE_NAME', 'amw-arc-k8s-demo')
 param logAnalyticsWorkspaceName = readEnvironmentVariable('LOG_ANALYTICS_WORKSPACE_NAME', 'law-arc-k8s-demo')

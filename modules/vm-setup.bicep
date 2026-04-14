@@ -13,6 +13,7 @@ param clusterName string
 param acrName string
 param keyVaultName string
 param connectedRegistryServiceClusterIp string
+param arcRbacAssigneeId string
 param azureMonitorWorkspaceId string
 param logAnalyticsWorkspaceId string
 
@@ -27,6 +28,7 @@ var envBlock = join([
   'export ACR_NAME="${acrName}"'
   'export KEY_VAULT_NAME="${keyVaultName}"'
   'export CONNECTED_REGISTRY_SERVICE_CLUSTER_IP="${connectedRegistryServiceClusterIp}"'
+  'export ARC_RBAC_ASSIGNEE_ID="${arcRbacAssigneeId}"'
   'export AZURE_MONITOR_WORKSPACE_ID="${azureMonitorWorkspaceId}"'
   'export LOG_ANALYTICS_WORKSPACE_ID="${logAnalyticsWorkspaceId}"'
 ], '\n')

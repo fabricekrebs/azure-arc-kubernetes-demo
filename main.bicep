@@ -46,6 +46,10 @@ param clusterName string
 @description('K3s service CIDR IP for the Connected Registry extension (must be in 10.43.0.0/16 range).')
 param connectedRegistryServiceClusterIp string
 
+// ─── RBAC ───────────────────────────────────────────────────────────────────
+@description('Entra Object ID of the user/group to assign Azure Arc Kubernetes Cluster Admin on the Arc cluster.')
+param arcRbacAssigneeId string
+
 // ─── Supporting services ────────────────────────────────────────────────────
 @description('Globally unique name for the Azure Container Registry (Premium SKU).')
 param acrName string
@@ -165,6 +169,7 @@ module vmSetup 'modules/vm-setup.bicep' = {
     acrName: acrName
     keyVaultName: keyVaultName
     connectedRegistryServiceClusterIp: connectedRegistryServiceClusterIp
+    arcRbacAssigneeId: arcRbacAssigneeId
     azureMonitorWorkspaceId: monitoring.outputs.monitorWorkspaceId
     logAnalyticsWorkspaceId: monitoring.outputs.logAnalyticsWorkspaceId
   }

@@ -10,7 +10,8 @@
 #
 # Environment variables are injected by the Bicep Custom Script Extension:
 #   RESOURCE_GROUP, CLUSTER_NAME, LOCATION, ACR_NAME, KEY_VAULT_NAME,
-#   CONNECTED_REGISTRY_SERVICE_CLUSTER_IP, AZURE_MONITOR_WORKSPACE_ID
+#   CONNECTED_REGISTRY_SERVICE_CLUSTER_IP, ARC_RBAC_ASSIGNEE_ID,
+#   AZURE_MONITOR_WORKSPACE_ID
 ###############################################################################
 set -euo pipefail
 
@@ -84,6 +85,25 @@ az connectedk8s connect \
 log "Waiting for Arc connection to stabilize..."
 sleep 30
 az connectedk8s show --name "$CLUSTER_NAME" --resource-group "$RESOURCE_GROUP" -o table
+
+log "Enabling Azure RBAC feature on Arc cluster..."
+az connectedk8s enable-features \
+  --name "$CLUSTER_NAME" \
+  --resource-group "$RESOURCE_GROUP" \
+  --features azure-rbac
+log "Azure RBAC feature enabled."
+
+log "Assigning Azure Arc Kubernetes Cluster Admin role..."
+ARC_CLUSTER_ID=$(az connectedk8s show \
+  --name "$CLUSTER_NAME" \
+  --resource-group "$RESOURCE_GROUP" \
+  --query id -o tsv)
+
+az role assignment create \
+  --assignee "$ARC_RBAC_ASSIGNEE_ID" \
+  --role "Azure Arc Kubernetes Cluster Admin" \
+  --scope "$ARC_CLUSTER_ID"
+log "Azure Arc Kubernetes Cluster Admin role assigned."
 
 ###############################################################################
 # 6. Install Key Vault Secrets Provider Extension
