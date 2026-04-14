@@ -1,0 +1,205 @@
+{
+  "version": "Notebook/1.0",
+  "items": [
+    {
+      "type": 1,
+      "content": {
+        "json": "# 🌐 Azure Arc K8s Dashboard\n\nReal-time overview of your Arc-enabled Kubernetes cluster **{CLUSTER_NAME}** in resource group **{RESOURCE_GROUP}**."
+      },
+      "name": "header"
+    },
+    {
+      "type": 1,
+      "content": {
+        "json": "---\n## Cluster Overview"
+      },
+      "name": "section-cluster"
+    },
+    {
+      "type": 3,
+      "content": {
+        "version": "KqlItem/1.0",
+        "query": "resources\n| where type == 'microsoft.kubernetes/connectedclusters'\n| where resourceGroup == '{RESOURCE_GROUP}'\n| where name == '{CLUSTER_NAME}'\n| project\n    ['Cluster Name'] = name,\n    ['Location'] = location,\n    ['K8s Version'] = tostring(properties.kubernetesVersion),\n    ['Distribution'] = tostring(properties.infrastructure),\n    ['Provisioning State'] = tostring(properties.provisioningState),\n    ['Connectivity'] = tostring(properties.connectivityStatus),\n    ['Last Connectivity'] = todatetime(properties.lastConnectivityTime),\n    ['Agent Version'] = tostring(properties.agentVersion),\n    ['Total Nodes'] = toint(properties.totalNodeCount),\n    ['Total Cores'] = toint(properties.totalCoreCount),\n    ['Managed Identity'] = tostring(identity.type)",
+        "size": 4,
+        "title": "Cluster Properties",
+        "queryType": 1,
+        "resourceType": "microsoft.resourcegraph/resources",
+        "crossComponentResources": ["/subscriptions/{SUBSCRIPTION_ID}"],
+        "visualization": "tiles",
+        "tileSettings": {
+          "titleContent": { "columnMatch": "Cluster Name", "formatter": 1 },
+          "subtitleContent": { "columnMatch": "Location" },
+          "leftContent": { "columnMatch": "Total Nodes", "formatter": 12, "formatOptions": { "palette": "auto" } },
+          "secondaryContent": { "columnMatch": "Connectivity", "formatter": 1 },
+          "showBorder": true
+        }
+      },
+      "name": "cluster-tiles"
+    },
+    {
+      "type": 3,
+      "content": {
+        "version": "KqlItem/1.0",
+        "query": "resources\n| where type == 'microsoft.kubernetes/connectedclusters'\n| where resourceGroup == '{RESOURCE_GROUP}'\n| where name == '{CLUSTER_NAME}'\n| project\n    ['Property'] = 'Cluster Name', ['Value'] = name\n| union (\n    resources\n    | where type == 'microsoft.kubernetes/connectedclusters'\n    | where resourceGroup == '{RESOURCE_GROUP}' and name == '{CLUSTER_NAME}'\n    | project ['Property'] = 'Location', ['Value'] = location\n)\n| union (\n    resources\n    | where type == 'microsoft.kubernetes/connectedclusters'\n    | where resourceGroup == '{RESOURCE_GROUP}' and name == '{CLUSTER_NAME}'\n    | project ['Property'] = 'Kubernetes Version', ['Value'] = tostring(properties.kubernetesVersion)\n)\n| union (\n    resources\n    | where type == 'microsoft.kubernetes/connectedclusters'\n    | where resourceGroup == '{RESOURCE_GROUP}' and name == '{CLUSTER_NAME}'\n    | project ['Property'] = 'Infrastructure', ['Value'] = tostring(properties.infrastructure)\n)\n| union (\n    resources\n    | where type == 'microsoft.kubernetes/connectedclusters'\n    | where resourceGroup == '{RESOURCE_GROUP}' and name == '{CLUSTER_NAME}'\n    | project ['Property'] = 'Provisioning State', ['Value'] = tostring(properties.provisioningState)\n)\n| union (\n    resources\n    | where type == 'microsoft.kubernetes/connectedclusters'\n    | where resourceGroup == '{RESOURCE_GROUP}' and name == '{CLUSTER_NAME}'\n    | project ['Property'] = 'Connectivity Status', ['Value'] = tostring(properties.connectivityStatus)\n)\n| union (\n    resources\n    | where type == 'microsoft.kubernetes/connectedclusters'\n    | where resourceGroup == '{RESOURCE_GROUP}' and name == '{CLUSTER_NAME}'\n    | project ['Property'] = 'Last Connectivity', ['Value'] = tostring(properties.lastConnectivityTime)\n)\n| union (\n    resources\n    | where type == 'microsoft.kubernetes/connectedclusters'\n    | where resourceGroup == '{RESOURCE_GROUP}' and name == '{CLUSTER_NAME}'\n    | project ['Property'] = 'Agent Version', ['Value'] = tostring(properties.agentVersion)\n)\n| union (\n    resources\n    | where type == 'microsoft.kubernetes/connectedclusters'\n    | where resourceGroup == '{RESOURCE_GROUP}' and name == '{CLUSTER_NAME}'\n    | project ['Property'] = 'Total Nodes', ['Value'] = tostring(properties.totalNodeCount)\n)\n| union (\n    resources\n    | where type == 'microsoft.kubernetes/connectedclusters'\n    | where resourceGroup == '{RESOURCE_GROUP}' and name == '{CLUSTER_NAME}'\n    | project ['Property'] = 'Total Cores', ['Value'] = tostring(properties.totalCoreCount)\n)\n| union (\n    resources\n    | where type == 'microsoft.kubernetes/connectedclusters'\n    | where resourceGroup == '{RESOURCE_GROUP}' and name == '{CLUSTER_NAME}'\n    | project ['Property'] = 'Managed Identity', ['Value'] = tostring(identity.type)\n)\n| union (\n    resources\n    | where type == 'microsoft.kubernetes/connectedclusters'\n    | where resourceGroup == '{RESOURCE_GROUP}' and name == '{CLUSTER_NAME}'\n    | project ['Property'] = 'Cluster ID', ['Value'] = id\n)",
+        "size": 1,
+        "title": "Cluster Details",
+        "queryType": 1,
+        "resourceType": "microsoft.resourcegraph/resources",
+        "crossComponentResources": ["/subscriptions/{SUBSCRIPTION_ID}"],
+        "visualization": "table",
+        "gridSettings": {
+          "formatters": [
+            { "columnMatch": "Property", "formatter": 1, "formatOptions": { "customColumnWidthSetting": "30%" } },
+            { "columnMatch": "Value", "formatter": 1 }
+          ]
+        }
+      },
+      "name": "cluster-details"
+    },
+    {
+      "type": 1,
+      "content": {
+        "json": "---\n## Installed Extensions"
+      },
+      "name": "section-extensions"
+    },
+    {
+      "type": 3,
+      "content": {
+        "version": "KqlItem/1.0",
+        "query": "kubernetesconfigurationresources\n| where type == 'microsoft.kubernetesconfiguration/extensions'\n| where id contains '{CLUSTER_NAME}'\n| where resourceGroup == '{RESOURCE_GROUP}'\n| extend extensionType = tostring(properties.extensionType)\n| extend provisioningState = tostring(properties.provisioningState)\n| extend autoUpgrade = tostring(properties.autoUpgradeMinorVersion)\n| extend releaseTrain = tostring(properties.releaseTrain)\n| extend version = tostring(properties.version)\n| extend installedAt = tostring(properties.systemData.createdAt)\n| project\n    ['Extension Name'] = name,\n    ['Type'] = extensionType,\n    ['Version'] = version,\n    ['State'] = provisioningState,\n    ['Auto Upgrade'] = autoUpgrade,\n    ['Release Train'] = releaseTrain,\n    ['Installed'] = installedAt",
+        "size": 0,
+        "title": "Arc Extensions",
+        "queryType": 1,
+        "resourceType": "microsoft.resourcegraph/resources",
+        "crossComponentResources": ["/subscriptions/{SUBSCRIPTION_ID}"],
+        "visualization": "table",
+        "gridSettings": {
+          "formatters": [
+            { "columnMatch": "State", "formatter": 18, "formatOptions": { "thresholdsOptions": "icons", "thresholdsGrid": [{ "operator": "==", "thresholdValue": "Succeeded", "representation": "success", "text": "{0}" }, { "operator": "==", "thresholdValue": "Failed", "representation": "failed", "text": "{0}" }, { "operator": "Default", "representation": "warning", "text": "{0}" }] } },
+            { "columnMatch": "Auto Upgrade", "formatter": 18, "formatOptions": { "thresholdsOptions": "icons", "thresholdsGrid": [{ "operator": "==", "thresholdValue": "true", "representation": "success", "text": "Yes" }, { "operator": "Default", "representation": "stopped", "text": "No" }] } }
+          ]
+        }
+      },
+      "name": "extensions-table"
+    },
+    {
+      "type": 1,
+      "content": {
+        "json": "---\n## Resource Group Resources"
+      },
+      "name": "section-resources"
+    },
+    {
+      "type": 3,
+      "content": {
+        "version": "KqlItem/1.0",
+        "query": "resources\n| where resourceGroup == '{RESOURCE_GROUP}'\n| summarize Count = count() by ['Resource Type'] = type\n| order by Count desc",
+        "size": 2,
+        "title": "Resources by Type",
+        "queryType": 1,
+        "resourceType": "microsoft.resourcegraph/resources",
+        "crossComponentResources": ["/subscriptions/{SUBSCRIPTION_ID}"],
+        "visualization": "piechart"
+      },
+      "name": "resources-pie"
+    },
+    {
+      "type": 3,
+      "content": {
+        "version": "KqlItem/1.0",
+        "query": "resources\n| where resourceGroup == '{RESOURCE_GROUP}'\n| project\n    ['Name'] = name,\n    ['Type'] = type,\n    ['Location'] = location,\n    ['Provisioning State'] = tostring(properties.provisioningState)\n| order by Type asc, Name asc",
+        "size": 0,
+        "title": "All Resources",
+        "queryType": 1,
+        "resourceType": "microsoft.resourcegraph/resources",
+        "crossComponentResources": ["/subscriptions/{SUBSCRIPTION_ID}"],
+        "visualization": "table",
+        "gridSettings": {
+          "formatters": [
+            { "columnMatch": "Provisioning State", "formatter": 18, "formatOptions": { "thresholdsOptions": "icons", "thresholdsGrid": [{ "operator": "==", "thresholdValue": "Succeeded", "representation": "success", "text": "{0}" }, { "operator": "==", "thresholdValue": "Failed", "representation": "failed", "text": "{0}" }, { "operator": "Default", "representation": "warning", "text": "{0}" }] } }
+          ]
+        }
+      },
+      "name": "resources-table"
+    },
+    {
+      "type": 1,
+      "content": {
+        "json": "---\n## Key Vault & Container Registry"
+      },
+      "name": "section-services"
+    },
+    {
+      "type": 3,
+      "content": {
+        "version": "KqlItem/1.0",
+        "query": "resources\n| where type == 'microsoft.keyvault/vaults'\n| where resourceGroup == '{RESOURCE_GROUP}'\n| extend enableRbac = tostring(properties.enableRbacAuthorization)\n| extend softDelete = tostring(properties.enableSoftDelete)\n| extend vaultUri = tostring(properties.vaultUri)\n| project\n    ['Key Vault'] = name,\n    ['URI'] = vaultUri,\n    ['RBAC Enabled'] = enableRbac,\n    ['Soft Delete'] = softDelete,\n    ['Location'] = location",
+        "size": 0,
+        "title": "Key Vault",
+        "queryType": 1,
+        "resourceType": "microsoft.resourcegraph/resources",
+        "crossComponentResources": ["/subscriptions/{SUBSCRIPTION_ID}"],
+        "visualization": "table"
+      },
+      "name": "keyvault-table"
+    },
+    {
+      "type": 3,
+      "content": {
+        "version": "KqlItem/1.0",
+        "query": "resources\n| where type == 'microsoft.containerregistry/registries'\n| where resourceGroup == '{RESOURCE_GROUP}'\n| extend sku = tostring(sku.name)\n| extend loginServer = tostring(properties.loginServer)\n| extend adminEnabled = tostring(properties.adminUserEnabled)\n| extend dataEndpoint = tostring(properties.dataEndpointEnabled)\n| project\n    ['Registry'] = name,\n    ['Login Server'] = loginServer,\n    ['SKU'] = sku,\n    ['Admin Enabled'] = adminEnabled,\n    ['Data Endpoints'] = dataEndpoint,\n    ['Location'] = location",
+        "size": 0,
+        "title": "Container Registry",
+        "queryType": 1,
+        "resourceType": "microsoft.resourcegraph/resources",
+        "crossComponentResources": ["/subscriptions/{SUBSCRIPTION_ID}"],
+        "visualization": "table"
+      },
+      "name": "acr-table"
+    },
+    {
+      "type": 1,
+      "content": {
+        "json": "---\n## Network & Compute"
+      },
+      "name": "section-network"
+    },
+    {
+      "type": 3,
+      "content": {
+        "version": "KqlItem/1.0",
+        "query": "resources\n| where type == 'microsoft.compute/virtualmachines'\n| where resourceGroup == '{RESOURCE_GROUP}'\n| extend vmSize = tostring(properties.hardwareProfile.vmSize)\n| extend osType = tostring(properties.storageProfile.osDisk.osType)\n| extend imageOffer = tostring(properties.storageProfile.imageReference.offer)\n| extend imageSku = tostring(properties.storageProfile.imageReference.sku)\n| extend provisioningState = tostring(properties.provisioningState)\n| project\n    ['VM Name'] = name,\n    ['Size'] = vmSize,\n    ['OS'] = osType,\n    ['Image'] = strcat(imageOffer, ' ', imageSku),\n    ['State'] = provisioningState,\n    ['Location'] = location",
+        "size": 0,
+        "title": "Virtual Machine",
+        "queryType": 1,
+        "resourceType": "microsoft.resourcegraph/resources",
+        "crossComponentResources": ["/subscriptions/{SUBSCRIPTION_ID}"],
+        "visualization": "table",
+        "gridSettings": {
+          "formatters": [
+            { "columnMatch": "State", "formatter": 18, "formatOptions": { "thresholdsOptions": "icons", "thresholdsGrid": [{ "operator": "==", "thresholdValue": "Succeeded", "representation": "success", "text": "{0}" }, { "operator": "Default", "representation": "warning", "text": "{0}" }] } }
+          ]
+        }
+      },
+      "name": "vm-table"
+    },
+    {
+      "type": 3,
+      "content": {
+        "version": "KqlItem/1.0",
+        "query": "resources\n| where type == 'microsoft.network/publicipaddresses'\n| where resourceGroup == '{RESOURCE_GROUP}'\n| extend ipAddress = tostring(properties.ipAddress)\n| extend allocationMethod = tostring(properties.publicIPAllocationMethod)\n| extend skuName = tostring(sku.name)\n| project\n    ['Name'] = name,\n    ['IP Address'] = ipAddress,\n    ['Allocation'] = allocationMethod,\n    ['SKU'] = skuName",
+        "size": 0,
+        "title": "Public IP Addresses",
+        "queryType": 1,
+        "resourceType": "microsoft.resourcegraph/resources",
+        "crossComponentResources": ["/subscriptions/{SUBSCRIPTION_ID}"],
+        "visualization": "table"
+      },
+      "name": "public-ip-table"
+    }
+  ],
+  "fallbackResourceIds": [
+    "azure monitor"
+  ]
+}
