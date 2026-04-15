@@ -1,15 +1,13 @@
 // modules/workbook.bicep
-// Deploys an Azure Monitor Workbook that visualizes Arc-enabled Kubernetes
-// cluster information: cluster overview, extensions, connectivity, and resources.
+// Deploys an Azure Monitor Workbook that visualizes all Arc-enabled Kubernetes
+// clusters: cluster overview, extensions, connectivity, and Arc resources.
 
 param location string
-param clusterName string
-param resourceGroupName string
 
 var workbookName = guid(resourceGroup().id, 'arc-k8s-workbook')
-var workbookDisplayName = 'Arc K8s Dashboard - ${clusterName}'
+var workbookDisplayName = 'Arc K8s Dashboard'
 
-var serializedContent = replace(replace(replace(loadTextContent('workbook-content.json'), '{CLUSTER_NAME}', clusterName), '{RESOURCE_GROUP}', resourceGroupName), '{SUBSCRIPTION_ID}', subscription().subscriptionId)
+var serializedContent = replace(loadTextContent('workbook-content.json'), '{SUBSCRIPTION_ID}', subscription().subscriptionId)
 
 resource workbook 'Microsoft.Insights/workbooks@2023-06-01' = {
   name: workbookName

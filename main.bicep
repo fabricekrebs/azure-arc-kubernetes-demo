@@ -183,8 +183,6 @@ module workbook 'modules/workbook.bicep' = {
   scope: rg
   params: {
     location: location
-    clusterName: clusterName
-    resourceGroupName: resourceGroupName
   }
 }
 
