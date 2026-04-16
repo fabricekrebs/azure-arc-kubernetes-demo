@@ -186,6 +186,14 @@ module workbook 'modules/workbook.bicep' = {
   }
 }
 
+module metricsWorkbook 'modules/k8s-metrics-workbook.bicep' = {
+  name: 'metrics-workbook'
+  scope: rg
+  params: {
+    location: location
+  }
+}
+
 // ═══════════════════════════════════════════════════════════════════════════
 // Outputs
 // ═══════════════════════════════════════════════════════════════════════════
@@ -194,3 +202,4 @@ output vmPublicIp string = network.outputs.publicIpAddress
 output acrLoginServer string = acr.outputs.acrLoginServer
 output keyVaultUri string = keyVault.outputs.keyVaultUri
 output workbookUrl string = workbook.outputs.workbookUrl
+output metricsWorkbookUrl string = metricsWorkbook.outputs.workbookUrl

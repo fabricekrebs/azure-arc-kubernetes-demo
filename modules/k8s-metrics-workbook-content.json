@@ -1,0 +1,563 @@
+{
+  "version": "Notebook/1.0",
+  "items": [
+    {
+      "type": 1,
+      "content": {
+        "json": "# \u2638 Arc K8s Metrics Dashboard\n\nMonitor Kubernetes performance metrics for Azure Arc-enabled clusters \u2014 CPU, memory, disk, network, pods, and nodes."
+      },
+      "name": "header"
+    },
+    {
+      "type": 9,
+      "content": {
+        "version": "KqlParameterItem/1.0",
+        "parameters": [
+          {
+            "id": "a1b2c3d4-0000-4aaa-bbbb-000000000000",
+            "version": "KqlParameterItem/1.0",
+            "name": "Subscription",
+            "label": "Subscription",
+            "type": 6,
+            "isRequired": true,
+            "multiSelect": false,
+            "typeSettings": {
+              "additionalResourceOptions": [],
+              "includeAll": false
+            },
+            "value": null
+          },
+          {
+            "id": "a1b2c3d4-2222-4aaa-bbbb-000000000002",
+            "version": "KqlParameterItem/1.0",
+            "name": "Clusters",
+            "label": "Cluster(s)",
+            "type": 2,
+            "isRequired": true,
+            "multiSelect": true,
+            "quote": "'",
+            "delimiter": ",",
+            "query": "resources\n| where type == 'microsoft.kubernetes/connectedclusters'\n| project value = name, label = name, selected = true\n| order by label asc",
+            "crossComponentResources": [
+              "{Subscription}"
+            ],
+            "typeSettings": {
+              "additionalResourceOptions": [
+                "value::all"
+              ],
+              "selectAllValue": "*",
+              "showDefault": false
+            },
+            "queryType": 1,
+            "resourceType": "microsoft.resourcegraph/resources",
+            "value": [
+              "value::all"
+            ]
+          },
+          {
+            "id": "a1b2c3d4-0001-4aaa-bbbb-000000000001",
+            "version": "KqlParameterItem/1.0",
+            "name": "Workspace",
+            "label": "Log Analytics Workspace",
+            "type": 5,
+            "isRequired": true,
+            "query": "kubernetesconfigurationresources\n| where type == 'microsoft.kubernetesconfiguration/extensions'\n| where tostring(properties.ExtensionType) =~ 'microsoft.azuremonitor.containers'\n| extend workspaceId = tostring(properties.ConfigurationSettings.logAnalyticsWorkspaceResourceID)\n| where isnotempty(workspaceId)\n| distinct workspaceId\n| project id = workspaceId",
+            "crossComponentResources": [
+              "{Subscription}"
+            ],
+            "typeSettings": {
+              "additionalResourceOptions": [],
+              "showDefault": false
+            },
+            "queryType": 1,
+            "resourceType": "microsoft.resourcegraph/resources",
+            "value": null
+          },
+          {
+            "id": "a1b2c3d4-1111-4aaa-bbbb-000000000001",
+            "version": "KqlParameterItem/1.0",
+            "name": "TimeRange",
+            "label": "Time Range",
+            "type": 4,
+            "isRequired": true,
+            "typeSettings": {
+              "selectableValues": [
+                {
+                  "durationMs": 300000
+                },
+                {
+                  "durationMs": 900000
+                },
+                {
+                  "durationMs": 1800000
+                },
+                {
+                  "durationMs": 3600000
+                },
+                {
+                  "durationMs": 10800000
+                },
+                {
+                  "durationMs": 21600000
+                },
+                {
+                  "durationMs": 43200000
+                },
+                {
+                  "durationMs": 86400000
+                },
+                {
+                  "durationMs": 172800000
+                },
+                {
+                  "durationMs": 604800000
+                },
+                {
+                  "durationMs": 2592000000
+                },
+                {
+                  "durationMs": 7776000000
+                },
+                {
+                  "durationMs": 15552000000
+                },
+                {
+                  "durationMs": 31536000000
+                },
+                {
+                  "durationMs": 63072000000
+                }
+              ],
+              "allowCustom": true
+            },
+            "value": {
+              "durationMs": 3600000
+            }
+          },
+          {
+            "id": "a1b2c3d4-3333-4aaa-bbbb-000000000003",
+            "version": "KqlParameterItem/1.0",
+            "name": "selectedTab",
+            "type": 1,
+            "isRequired": false,
+            "value": "cluster",
+            "isHiddenWhenLocked": true
+          }
+        ],
+        "style": "pills",
+        "queryType": 0,
+        "resourceType": "microsoft.operationalinsights/workspaces"
+      },
+      "name": "parameters"
+    },
+    {
+      "type": 11,
+      "content": {
+        "version": "LinkItem/1.0",
+        "style": "tabs",
+        "links": [
+          {
+            "id": "tab-link-cluster",
+            "cellValue": "selectedTab",
+            "linkTarget": "parameter",
+            "linkLabel": "Cluster Metrics",
+            "subTarget": "cluster",
+            "style": "link"
+          },
+          {
+            "id": "tab-link-nodes",
+            "cellValue": "selectedTab",
+            "linkTarget": "parameter",
+            "linkLabel": "Node Metrics",
+            "subTarget": "nodes",
+            "style": "link"
+          },
+          {
+            "id": "tab-link-pods",
+            "cellValue": "selectedTab",
+            "linkTarget": "parameter",
+            "linkLabel": "Pod Metrics",
+            "subTarget": "pods",
+            "style": "link"
+          }
+        ]
+      },
+      "name": "tabs"
+    },
+    {
+      "type": 12,
+      "content": {
+        "version": "NotebookGroup/1.0",
+        "groupType": 0,
+        "items": [
+          {
+            "type": 1,
+            "content": {
+              "json": "## Cluster-level Metrics\nAggregated resource usage across all nodes per cluster."
+            },
+            "name": "cluster-section-header"
+          },
+          {
+            "type": 3,
+            "content": {
+              "version": "KqlItem/1.0",
+              "query": "let clusterNodes = KubeNodeInventory\n| where '*' in~ ({Clusters}) or ClusterName in~ ({Clusters})\n| distinct Computer, ClusterName;\nPerf\n| where ObjectName == 'K8SNode' and CounterName == 'cpuUsageNanoCores'\n| lookup kind=inner clusterNodes on Computer\n| summarize ['CPU (millicores)'] = avg(CounterValue) / 1000000 by bin(TimeGenerated, {TimeRange:grain}), ClusterName\n| render timechart",
+              "size": 0,
+              "title": "Cluster CPU Usage (millicores)",
+              "queryType": 0,
+              "resourceType": "microsoft.operationalinsights/workspaces",
+              "crossComponentResources": [
+                "{Workspace}"
+              ],
+              "visualization": "timechart",
+              "timeContextFromParameter": "TimeRange"
+            },
+            "customWidth": "50",
+            "name": "cluster-cpu"
+          },
+          {
+            "type": 3,
+            "content": {
+              "version": "KqlItem/1.0",
+              "query": "let clusterNodes = KubeNodeInventory\n| where '*' in~ ({Clusters}) or ClusterName in~ ({Clusters})\n| distinct Computer, ClusterName;\nPerf\n| where ObjectName == 'K8SNode' and CounterName == 'memoryWorkingSetBytes'\n| lookup kind=inner clusterNodes on Computer\n| summarize ['Memory (GB)'] = avg(CounterValue) / (1024 * 1024 * 1024) by bin(TimeGenerated, {TimeRange:grain}), ClusterName\n| render timechart",
+              "size": 0,
+              "title": "Cluster Memory Working Set (GB)",
+              "queryType": 0,
+              "resourceType": "microsoft.operationalinsights/workspaces",
+              "crossComponentResources": [
+                "{Workspace}"
+              ],
+              "visualization": "timechart",
+              "timeContextFromParameter": "TimeRange"
+            },
+            "customWidth": "50",
+            "name": "cluster-memory"
+          },
+          {
+            "type": 3,
+            "content": {
+              "version": "KqlItem/1.0",
+              "query": "KubeNodeInventory\n| where '*' in~ ({Clusters}) or ClusterName in~ ({Clusters})\n| summarize ['Node Count'] = dcount(Computer) by bin(TimeGenerated, {TimeRange:grain}), ClusterName\n| render timechart",
+              "size": 0,
+              "title": "Node Count",
+              "queryType": 0,
+              "resourceType": "microsoft.operationalinsights/workspaces",
+              "crossComponentResources": [
+                "{Workspace}"
+              ],
+              "visualization": "timechart",
+              "timeContextFromParameter": "TimeRange"
+            },
+            "customWidth": "50",
+            "name": "cluster-node-count"
+          },
+          {
+            "type": 3,
+            "content": {
+              "version": "KqlItem/1.0",
+              "query": "KubePodInventory\n| where '*' in~ ({Clusters}) or ClusterName in~ ({Clusters})\n| summarize ['Pod Count'] = dcount(PodUid) by bin(TimeGenerated, {TimeRange:grain}), ClusterName\n| render timechart",
+              "size": 0,
+              "title": "Pod Count",
+              "queryType": 0,
+              "resourceType": "microsoft.operationalinsights/workspaces",
+              "crossComponentResources": [
+                "{Workspace}"
+              ],
+              "visualization": "timechart",
+              "timeContextFromParameter": "TimeRange"
+            },
+            "customWidth": "50",
+            "name": "cluster-pod-count"
+          },
+          {
+            "type": 3,
+            "content": {
+              "version": "KqlItem/1.0",
+              "query": "let clusterNodes = KubeNodeInventory\n| where '*' in~ ({Clusters}) or ClusterName in~ ({Clusters})\n| distinct Computer, ClusterName;\nPerf\n| where ObjectName == 'K8SNode' and CounterName == 'memoryRssBytes'\n| lookup kind=inner clusterNodes on Computer\n| summarize ['Memory RSS (GB)'] = avg(CounterValue) / (1024 * 1024 * 1024) by bin(TimeGenerated, {TimeRange:grain}), ClusterName\n| render timechart",
+              "size": 0,
+              "title": "Cluster Memory RSS (GB)",
+              "queryType": 0,
+              "resourceType": "microsoft.operationalinsights/workspaces",
+              "crossComponentResources": [
+                "{Workspace}"
+              ],
+              "visualization": "timechart",
+              "timeContextFromParameter": "TimeRange"
+            },
+            "customWidth": "50",
+            "name": "cluster-memory-rss"
+          }
+        ]
+      },
+      "conditionalVisibility": {
+        "parameterName": "selectedTab",
+        "comparison": "isEqualTo",
+        "value": "cluster"
+      },
+      "name": "cluster-tab-group"
+    },
+    {
+      "type": 12,
+      "content": {
+        "version": "NotebookGroup/1.0",
+        "groupType": 0,
+        "items": [
+          {
+            "type": 1,
+            "content": {
+              "json": "## Node-level Metrics\nPer-node resource usage \u2014 CPU, memory, allocatable capacity, and status."
+            },
+            "name": "node-section-header"
+          },
+          {
+            "type": 3,
+            "content": {
+              "version": "KqlItem/1.0",
+              "query": "let clusterNodes = KubeNodeInventory\n| where '*' in~ ({Clusters}) or ClusterName in~ ({Clusters})\n| distinct Computer;\nPerf\n| where ObjectName == 'K8SNode' and CounterName == 'cpuUsageNanoCores'\n| where Computer in (clusterNodes)\n| summarize ['CPU (millicores)'] = avg(CounterValue) / 1000000 by bin(TimeGenerated, {TimeRange:grain}), Computer\n| render timechart",
+              "size": 0,
+              "title": "Node CPU Usage (millicores)",
+              "queryType": 0,
+              "resourceType": "microsoft.operationalinsights/workspaces",
+              "crossComponentResources": [
+                "{Workspace}"
+              ],
+              "visualization": "timechart",
+              "timeContextFromParameter": "TimeRange"
+            },
+            "customWidth": "50",
+            "name": "node-cpu"
+          },
+          {
+            "type": 3,
+            "content": {
+              "version": "KqlItem/1.0",
+              "query": "let clusterNodes = KubeNodeInventory\n| where '*' in~ ({Clusters}) or ClusterName in~ ({Clusters})\n| distinct Computer;\nPerf\n| where ObjectName == 'K8SNode' and CounterName == 'memoryWorkingSetBytes'\n| where Computer in (clusterNodes)\n| summarize ['Memory (MB)'] = avg(CounterValue) / (1024 * 1024) by bin(TimeGenerated, {TimeRange:grain}), Computer\n| render timechart",
+              "size": 0,
+              "title": "Node Memory Working Set (MB)",
+              "queryType": 0,
+              "resourceType": "microsoft.operationalinsights/workspaces",
+              "crossComponentResources": [
+                "{Workspace}"
+              ],
+              "visualization": "timechart",
+              "timeContextFromParameter": "TimeRange"
+            },
+            "customWidth": "50",
+            "name": "node-memory"
+          },
+          {
+            "type": 3,
+            "content": {
+              "version": "KqlItem/1.0",
+              "query": "let clusterNodes = KubeNodeInventory\n| where '*' in~ ({Clusters}) or ClusterName in~ ({Clusters})\n| distinct Computer;\nPerf\n| where ObjectName == 'K8SNode' and CounterName == 'memoryRssBytes'\n| where Computer in (clusterNodes)\n| summarize ['Memory RSS (MB)'] = avg(CounterValue) / (1024 * 1024) by bin(TimeGenerated, {TimeRange:grain}), Computer\n| render timechart",
+              "size": 0,
+              "title": "Node Memory RSS (MB)",
+              "queryType": 0,
+              "resourceType": "microsoft.operationalinsights/workspaces",
+              "crossComponentResources": [
+                "{Workspace}"
+              ],
+              "visualization": "timechart",
+              "timeContextFromParameter": "TimeRange"
+            },
+            "customWidth": "50",
+            "name": "node-memory-rss"
+          },
+          {
+            "type": 3,
+            "content": {
+              "version": "KqlItem/1.0",
+              "query": "let clusterNodes = KubeNodeInventory\n| where '*' in~ ({Clusters}) or ClusterName in~ ({Clusters})\n| distinct Computer;\nPerf\n| where ObjectName == 'K8SNode' and CounterName == 'cpuAllocatableNanoCores'\n| where Computer in (clusterNodes)\n| summarize ['CPU Allocatable (millicores)'] = avg(CounterValue) / 1000000 by bin(TimeGenerated, {TimeRange:grain}), Computer\n| render timechart",
+              "size": 0,
+              "title": "Node CPU Allocatable (millicores)",
+              "queryType": 0,
+              "resourceType": "microsoft.operationalinsights/workspaces",
+              "crossComponentResources": [
+                "{Workspace}"
+              ],
+              "visualization": "timechart",
+              "timeContextFromParameter": "TimeRange"
+            },
+            "customWidth": "50",
+            "name": "node-cpu-alloc"
+          },
+          {
+            "type": 3,
+            "content": {
+              "version": "KqlItem/1.0",
+              "query": "let clusterNodes = KubeNodeInventory\n| where '*' in~ ({Clusters}) or ClusterName in~ ({Clusters})\n| distinct Computer;\nPerf\n| where ObjectName == 'K8SNode' and CounterName == 'memoryAllocatableBytes'\n| where Computer in (clusterNodes)\n| summarize ['Memory Allocatable (MB)'] = avg(CounterValue) / (1024 * 1024) by bin(TimeGenerated, {TimeRange:grain}), Computer\n| render timechart",
+              "size": 0,
+              "title": "Node Memory Allocatable (MB)",
+              "queryType": 0,
+              "resourceType": "microsoft.operationalinsights/workspaces",
+              "crossComponentResources": [
+                "{Workspace}"
+              ],
+              "visualization": "timechart",
+              "timeContextFromParameter": "TimeRange"
+            },
+            "customWidth": "50",
+            "name": "node-mem-alloc"
+          },
+          {
+            "type": 3,
+            "content": {
+              "version": "KqlItem/1.0",
+              "query": "KubeNodeInventory\n| where '*' in~ ({Clusters}) or ClusterName in~ ({Clusters})\n| summarize Ready = countif(Status == 'Ready'), NotReady = countif(Status != 'Ready') by bin(TimeGenerated, {TimeRange:grain}), ClusterName\n| render timechart",
+              "size": 0,
+              "title": "Node Ready vs Not Ready",
+              "queryType": 0,
+              "resourceType": "microsoft.operationalinsights/workspaces",
+              "crossComponentResources": [
+                "{Workspace}"
+              ],
+              "visualization": "timechart",
+              "timeContextFromParameter": "TimeRange"
+            },
+            "customWidth": "50",
+            "name": "node-status"
+          }
+        ]
+      },
+      "conditionalVisibility": {
+        "parameterName": "selectedTab",
+        "comparison": "isEqualTo",
+        "value": "nodes"
+      },
+      "name": "node-tab-group"
+    },
+    {
+      "type": 12,
+      "content": {
+        "version": "NotebookGroup/1.0",
+        "groupType": 0,
+        "items": [
+          {
+            "type": 1,
+            "content": {
+              "json": "## Pod-level Metrics\nPer-pod resource consumption, container restarts, phase distribution, and events."
+            },
+            "name": "pod-section-header"
+          },
+          {
+            "type": 3,
+            "content": {
+              "version": "KqlItem/1.0",
+              "query": "let clusterNodes = KubeNodeInventory\n| where '*' in~ ({Clusters}) or ClusterName in~ ({Clusters})\n| distinct Computer;\nlet topContainers = Perf\n| where ObjectName == 'K8SContainer' and CounterName == 'cpuUsageNanoCores'\n| where Computer in (clusterNodes)\n| summarize AvgCpu = avg(CounterValue) by InstanceName\n| top 15 by AvgCpu desc\n| project InstanceName;\nPerf\n| where ObjectName == 'K8SContainer' and CounterName == 'cpuUsageNanoCores'\n| where Computer in (clusterNodes)\n| where InstanceName in (topContainers)\n| summarize ['CPU (millicores)'] = avg(CounterValue) / 1000000 by bin(TimeGenerated, {TimeRange:grain}), InstanceName\n| render timechart",
+              "size": 0,
+              "title": "Top 15 Containers \u2014 CPU (millicores)",
+              "queryType": 0,
+              "resourceType": "microsoft.operationalinsights/workspaces",
+              "crossComponentResources": [
+                "{Workspace}"
+              ],
+              "visualization": "timechart",
+              "timeContextFromParameter": "TimeRange"
+            },
+            "customWidth": "50",
+            "name": "pod-top-cpu"
+          },
+          {
+            "type": 3,
+            "content": {
+              "version": "KqlItem/1.0",
+              "query": "let clusterNodes = KubeNodeInventory\n| where '*' in~ ({Clusters}) or ClusterName in~ ({Clusters})\n| distinct Computer;\nlet topContainers = Perf\n| where ObjectName == 'K8SContainer' and CounterName == 'memoryWorkingSetBytes'\n| where Computer in (clusterNodes)\n| summarize AvgMem = avg(CounterValue) by InstanceName\n| top 15 by AvgMem desc\n| project InstanceName;\nPerf\n| where ObjectName == 'K8SContainer' and CounterName == 'memoryWorkingSetBytes'\n| where Computer in (clusterNodes)\n| where InstanceName in (topContainers)\n| summarize ['Memory (MB)'] = avg(CounterValue) / (1024 * 1024) by bin(TimeGenerated, {TimeRange:grain}), InstanceName\n| render timechart",
+              "size": 0,
+              "title": "Top 15 Containers \u2014 Memory (MB)",
+              "queryType": 0,
+              "resourceType": "microsoft.operationalinsights/workspaces",
+              "crossComponentResources": [
+                "{Workspace}"
+              ],
+              "visualization": "timechart",
+              "timeContextFromParameter": "TimeRange"
+            },
+            "customWidth": "50",
+            "name": "pod-top-memory"
+          },
+          {
+            "type": 3,
+            "content": {
+              "version": "KqlItem/1.0",
+              "query": "KubePodInventory\n| where '*' in~ ({Clusters}) or ClusterName in~ ({Clusters})\n| where ContainerRestartCount > 0\n| summarize ['Containers Restarting'] = dcount(ContainerID) by bin(TimeGenerated, {TimeRange:grain}), ClusterName\n| render timechart",
+              "size": 0,
+              "title": "Containers with Restarts",
+              "queryType": 0,
+              "resourceType": "microsoft.operationalinsights/workspaces",
+              "crossComponentResources": [
+                "{Workspace}"
+              ],
+              "visualization": "timechart",
+              "timeContextFromParameter": "TimeRange"
+            },
+            "customWidth": "50",
+            "name": "pod-restarts"
+          },
+          {
+            "type": 3,
+            "content": {
+              "version": "KqlItem/1.0",
+              "query": "KubeEvents\n| where '*' in~ ({Clusters}) or ClusterName in~ ({Clusters})\n| where Reason in ('BackOff', 'Unhealthy', 'Failed', 'FailedScheduling', 'OOMKilling', 'Evicted', 'FailedMount', 'FailedAttachVolume')\n| summarize ['Events'] = count() by bin(TimeGenerated, {TimeRange:grain}), Reason\n| render timechart",
+              "size": 0,
+              "title": "Warning Events by Reason",
+              "queryType": 0,
+              "resourceType": "microsoft.operationalinsights/workspaces",
+              "crossComponentResources": [
+                "{Workspace}"
+              ],
+              "visualization": "timechart",
+              "timeContextFromParameter": "TimeRange"
+            },
+            "customWidth": "50",
+            "name": "pod-warning-events"
+          },
+          {
+            "type": 3,
+            "content": {
+              "version": "KqlItem/1.0",
+              "query": "KubePodInventory\n| where '*' in~ ({Clusters}) or ClusterName in~ ({Clusters})\n| summarize PodCount = dcount(PodUid) by bin(TimeGenerated, {TimeRange:grain}), PodStatus\n| render timechart",
+              "size": 0,
+              "title": "Pod Count by Phase",
+              "queryType": 0,
+              "resourceType": "microsoft.operationalinsights/workspaces",
+              "crossComponentResources": [
+                "{Workspace}"
+              ],
+              "visualization": "timechart",
+              "timeContextFromParameter": "TimeRange"
+            },
+            "customWidth": "50",
+            "name": "pod-phase"
+          },
+          {
+            "type": 3,
+            "content": {
+              "version": "KqlItem/1.0",
+              "query": "KubePodInventory\n| where '*' in~ ({Clusters}) or ClusterName in~ ({Clusters})\n| summarize PodCount = dcount(PodUid) by bin(TimeGenerated, {TimeRange:grain}), Namespace\n| render timechart",
+              "size": 0,
+              "title": "Pod Count by Namespace",
+              "queryType": 0,
+              "resourceType": "microsoft.operationalinsights/workspaces",
+              "crossComponentResources": [
+                "{Workspace}"
+              ],
+              "visualization": "timechart",
+              "timeContextFromParameter": "TimeRange"
+            },
+            "customWidth": "50",
+            "name": "pod-by-namespace"
+          }
+        ]
+      },
+      "conditionalVisibility": {
+        "parameterName": "selectedTab",
+        "comparison": "isEqualTo",
+        "value": "pods"
+      },
+      "name": "pod-tab-group"
+    }
+  ],
+  "fallbackResourceIds": [
+    "azure monitor"
+  ]
+}
