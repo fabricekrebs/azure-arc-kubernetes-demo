@@ -176,6 +176,22 @@ module vmSetup 'modules/vm-setup.bicep' = {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
+// Azure Policy — deny/audit containers using the "latest" image tag
+// ═══════════════════════════════════════════════════════════════════════════
+module policy 'modules/policy.bicep' = {
+  name: 'policy-definition'
+}
+
+module policyAssignment 'modules/policy-assignment.bicep' = {
+  name: 'policy-assignment'
+  scope: rg
+  params: {
+    policyDefinitionId: policy.outputs.policyDefinitionId
+    policyEffect: 'Audit'
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
 // Workbook — Arc K8s dashboard (deployed early, queries populate after Arc connects)
 // ═══════════════════════════════════════════════════════════════════════════
 module workbook 'modules/workbook.bicep' = {

@@ -226,7 +226,19 @@ az k8s-configuration flux create \
   --url https://github.com/fabricekrebs/fluxv2-demo-app \
   --branch main \
   --kustomization name=fluxv2-podinfo-demo path=./apps/fluxv2-podinfo-demo prune=true
-log "Flux GitOps configuration applied."
+log "Flux GitOps configuration for fluxv2-podinfo-demo applied."
+
+az k8s-configuration flux create \
+  --name hello-world \
+  --cluster-name "$CLUSTER_NAME" \
+  --resource-group "$RESOURCE_GROUP" \
+  --cluster-type connectedClusters \
+  --namespace flux-system \
+  --scope cluster \
+  --url https://github.com/fabricekrebs/fluxv2-demo-app \
+  --branch main \
+  --kustomization name=hello-world path=./apps/hello-world prune=true
+log "Flux GitOps configuration for hello-world applied."
 
 ###############################################################################
 # Done
@@ -243,4 +255,5 @@ log "    - Container Insights (azuremonitor-containers)"
 log "    - Flux (microsoft.flux)"
 log "  GitOps:"
 log "    - fluxv2-podinfo-demo -> apps/fluxv2-podinfo-demo"
+log "    - hello-world          -> apps/hello-world"
 log "=========================================="
